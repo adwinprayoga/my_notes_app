@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/note_model.dart';
 import '../providers/note_provider.dart';
 import 'note_form_page.dart';
 
@@ -14,9 +15,11 @@ class _NoteListPageState extends State<NoteListPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => Provider.of<NoteProvider>(context, listen: false).fetchNotes(),
-    );
+    Future.microtask(() {
+      if (mounted) {
+        Provider.of<NoteProvider>(context, listen: false).fetchNotes();
+      }
+    });
   }
 
   @override
@@ -27,50 +30,49 @@ class _NoteListPageState extends State<NoteListPage> {
       ),
       body: Consumer<NoteProvider>(
         builder: (context, provider, child) {
-          // 1. Tampilan Loading
-          if (provider.state == ViewState.loading) {
+          if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. Tampilan Error
-          if (provider.state == ViewState.error) {
-            return Center(
-              child: Text(
-                provider.errorMessage,
-                style: const TextStyle(color: Colors.red),
-              ),
-            );
+          if (provider.notes.isEmpty) {
+            return const Center(child: Text('Belum ada catatan'));
           }
 
-          // 3. Tampilan Data Kosong
-          if (provider.state == ViewState.empty) {
-            return const Center(
-              child: Text('Belum ada catatan. Tambahkan sekarang!'),
-            );
-          }
-
-          // 4. Tampilan Data Terisi
           return ListView.builder(
             itemCount: provider.notes.length,
             itemBuilder: (context, index) {
               final note = provider.notes[index];
               return ListTile(
-                title: Text(note.title),
-                subtitle: Text(note.content),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () {
-                    provider.deleteNote(note.id!);
-                  },
+                title: Text(
+                  note.title,
+                  style: TextStyle(
+                    fontWeight: note.isImportant ? FontWeight.bold : FontWeight.normal,
+                  ),
                 ),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => NoteFormPage(note: note),
+                subtitle: Text('${note.category} • ${note.date}\n${note.content}'),
+                isThreeLine: true,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => NoteFormPage(note: note),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        provider.deleteNote(note.id!);
+                      },
+                    ),
+                  ],
+                ),
               );
             },
           );
@@ -80,7 +82,9 @@ class _NoteListPageState extends State<NoteListPage> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const NoteFormPage()),
+            MaterialPageRoute(
+              builder: (context) => const NoteFormPage(),
+            ),
           );
         },
         child: const Icon(Icons.add),

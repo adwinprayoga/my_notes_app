@@ -2,71 +2,35 @@ import 'package:flutter/material.dart';
 import '../models/note_model.dart';
 import '../services/database_helper.dart';
 
-enum ViewState { loading, loaded, empty, error }
-
-class NoteProvider extends ChangeNotifier {
+class NoteProvider with ChangeNotifier {
   List<Note> _notes = [];
-  ViewState _state = ViewState.loading;
-  String _errorMessage = '';
+  bool _isLoading = false;
 
   List<Note> get notes => _notes;
-  ViewState get state => _state;
-  String get errorMessage => _errorMessage;
+  bool get isLoading => _isLoading;
 
-  // Load / Fetch Data
   Future<void> fetchNotes() async {
-    _state = ViewState.loading;
+    _isLoading = true;
     notifyListeners();
-
-    try {
-      _notes = await DatabaseHelper.instance.readAllNotes();
-      if (_notes.isEmpty) {
-        _state = ViewState.empty;
-      } else {
-        _state = ViewState.loaded;
-      }
-    } catch (e) {
-      _state = ViewState.error;
-      _errorMessage = 'Gagal memuat data: ${e.toString()}';
-    }
+    _notes = await DatabaseHelper.instance.getAllNotes();
+    _isLoading = false;
     notifyListeners();
   }
 
-  // Add Data
-  Future<void> addNote(String title, String content) async {
-    try {
-      final newNote = Note(title: title, content: content);
-      await DatabaseHelper.instance.insert(newNote);
-      await fetchNotes();
-    } catch (e) {
-      _state = ViewState.error;
-      _errorMessage = 'Gagal menambah data';
-      notifyListeners();
-    }
+  // Parameter diubah agar menerima objek Note
+  Future<void> addNote(Note note) async {
+    await DatabaseHelper.instance.insertNote(note);
+    await fetchNotes();
   }
 
-  // Update Data
-  Future<void> updateNote(int id, String title, String content) async {
-    try {
-      final updatedNote = Note(id: id, title: title, content: content);
-      await DatabaseHelper.instance.update(updatedNote);
-      await fetchNotes();
-    } catch (e) {
-      _state = ViewState.error;
-      _errorMessage = 'Gagal mengubah data';
-      notifyListeners();
-    }
+  // Parameter diubah agar menerima objek Note
+  Future<void> updateNote(Note note) async {
+    await DatabaseHelper.instance.updateNote(note);
+    await fetchNotes();
   }
 
-  // Delete Data
   Future<void> deleteNote(int id) async {
-    try {
-      await DatabaseHelper.instance.delete(id);
-      await fetchNotes();
-    } catch (e) {
-      _state = ViewState.error;
-      _errorMessage = 'Gagal menghapus data';
-      notifyListeners();
-    }
+    await DatabaseHelper.instance.deleteNote(id);
+    await fetchNotes();
   }
 }

@@ -20,8 +20,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('DROP TABLE IF EXISTS notes');
+          await _createDB(db, newVersion);
+        }
+      },
     );
   }
 
@@ -30,28 +36,28 @@ class DatabaseHelper {
       CREATE TABLE notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
-        content TEXT NOT NULL
+        content TEXT NOT NULL,
+        category TEXT NOT NULL,
+        date TEXT NOT NULL,
+        isImportant INTEGER NOT NULL
       )
     ''');
   }
 
-  // Create
-  Future<int> insert(Note note) async {
+  Future<int> insertNote(Note note) async {
     final db = await instance.database;
     return await db.insert('notes', note.toMap());
   }
 
-  // Read All
-  Future<List<Note>> readAllNotes() async {
+  Future<List<Note>> getAllNotes() async {
     final db = await instance.database;
     final result = await db.query('notes', orderBy: 'id DESC');
     return result.map((json) => Note.fromMap(json)).toList();
   }
 
-  // Update
-  Future<int> update(Note note) async {
+  Future<int> updateNote(Note note) async {
     final db = await instance.database;
-    return db.update(
+    return await db.update(
       'notes',
       note.toMap(),
       where: 'id = ?',
@@ -59,13 +65,8 @@ class DatabaseHelper {
     );
   }
 
-  // Delete
-  Future<int> delete(int id) async {
+  Future<int> deleteNote(int id) async {
     final db = await instance.database;
-    return await db.delete(
-      'notes',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('notes', where: 'id = ?', whereArgs: [id]);
   }
 }
